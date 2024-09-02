@@ -1,5 +1,7 @@
 from django.shortcuts import redirect, render
 from django.http import Http404, HttpResponse
+from .forms import MarkdownForm
+import markdown
 
 from . import util
 
@@ -27,6 +29,19 @@ def search(request):
         return redirect('visit', entry_name=query)  # Redirect to the entry page if exists
     else:
         return HttpResponse("The requested page was not found.")  # You can handle a search failure differently
+    
+def entry(request):
+    if request.method == 'POST':
+        form = MarkdownForm(request.POST)
+        title = request.POST.get('title')
+        entries = util.list_entries()
+        if form.is_valid() and title not in entries:
+            markdown_content = form.cleaned_data['content']
+            util.save_entry(title, markdown_content)
+            return redirect('index')
+        else:
+            return HttpResponse("Title already exists!")
+    else:
+        form = MarkdownForm()
 
-def create_new_entry(request):
-    return render(request, "encyclopedia/new_entry.html")
+    return render(request, 'encyclopedia/markdown_form.html', {'form': form})
