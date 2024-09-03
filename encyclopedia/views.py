@@ -1,3 +1,4 @@
+import random
 from django.shortcuts import redirect, render
 from django.http import Http404, HttpResponse
 from .forms import MarkdownForm
@@ -8,7 +9,7 @@ from . import util
 
 def index(request):
     return render(request, "encyclopedia/index.html", {
-        "entries": util.list_entries(),
+        "entries": util.list_entries()
     })
 
 def visit(request, entry_name):
@@ -17,10 +18,12 @@ def visit(request, entry_name):
 
     if entry_content is None:
         raise Http404("Page not found!")
+    
+    entry_html = markdown.markdown(entry_content)
 
     return render(request, "encyclopedia/entry.html", {
         "entryName": entry_name,
-        "entry": util.get_entry(entry_name)
+        "entry": entry_html
     })
 
 def search(request):
@@ -44,4 +47,30 @@ def entry(request):
     else:
         form = MarkdownForm()
 
-    return render(request, 'encyclopedia/markdown_form.html', {'form': form})
+    return render(request, "encyclopedia/markdown_form.html", {'form': form})
+
+def edit_entry(request, entry_name):
+    if request.method == 'POST':
+        form = MarkdownForm(request.POST)
+        if form.is_valid():
+            content = form.cleaned_data['content']
+            util.save_entry(entry_name, content)
+            return redirect('visit', entry_name=entry_name)
+    else:
+        entry_content = util.get_entry(entry_name)
+        if entry_content is None:
+            raise Http404("Page not found")
+        form = MarkdownForm(initial={'title': entry_name, 'content': entry_content})
+
+    return render(request, "encyclopedia/edit_entry.html", {
+        "form": form,
+        "entryName": entry_name
+    })
+
+def random_page(request):
+    entries = util.list_entries()
+    if entries:
+        random_entry = random.choice(entries)
+        return redirect('visit', entry_name = random_entry)
+    else:
+        raise Http404("No entries available!")
